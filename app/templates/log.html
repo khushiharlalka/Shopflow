@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% from "_macros.html" import trace_panel %}
+{% block title %}SQL Log{% endblock %}
+{% block eyebrow %}This session{% endblock %}
+{% block heading %}SQL log{% endblock %}
+
+{% block content %}
+<p class="hint">Every action you take in the app is listed here, newest first: what you did, which SQL or PL/SQL
+  ran, which tables changed and what Oracle returned. Use it during the demo to explain each transaction.</p>
+{% for t in traces %}
+  {{ trace_panel(t, compact=True) }}
+{% else %}
+  <section class="card"><p class="empty">No actions yet. Create an order, add an item or record a payment and it will show up here.</p></section>
+{% endfor %}
+{% endblock %}

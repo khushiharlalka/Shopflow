@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pill, sql_box %}
+{% block title %}{{ c.first_name }} {{ c.last_name }}{% endblock %}
+{% block eyebrow %}Customer #{{ c.customer_id }}{% endblock %}
+{% block heading %}{{ c.first_name }} {{ c.last_name }}{% endblock %}
+{% block actions %}
+  <form method="post" action="{{ url_for('create_order') }}">
+    <input type="hidden" name="customer" value="{{ c.customer_id }}">
+    <button class="btn">+ New order for {{ c.first_name }}</button>
+  </form>
+{% endblock %}
+
+{% block content %}
+<div class="grid-side">
+  <div>
+    <section class="card">
+      <h2>Orders</h2>
+      <table>
+        <thead><tr><th>Order</th><th>Date</th><th>Status</th><th class="num">Value</th><th>Payment</th></tr></thead>
+        <tbody>
+        {% for o in orders %}
+          <tr class="link" onclick="location='{{ url_for('order_detail', oid=o.order_id) }}'">
+            <td><b>#{{ o.order_id }}</b></td><td>{{ o.order_date | d }}</td><td>{{ pill(o.order_status) }}</td>
+            <td class="num">{{ o.total_order_value | money }}</td><td>{{ pill(o.payment_status) }}</td></tr>
+        {% else %}
+          <tr><td colspan="5" class="empty">No orders yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    <section class="card">
+      <h2>Purchase history</h2>
+      <table>
+        <thead><tr><th>Order</th><th>Product</th><th class="num">Qty</th><th class="num">Price paid</th><th class="num">Value</th></tr></thead>
+        <tbody>
+        {% for h in history %}
+          <tr><td>#{{ h.order_id }}</td><td>{{ h.product_name }}</td><td class="num">{{ h.quantity }}</td>
+              <td class="num">{{ h.selling_price | money }}</td><td class="num">{{ h.item_value | money }}</td></tr>
+        {% else %}
+          <tr><td colspan="5" class="empty">Nothing bought yet.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      {{ sql_box("SELECT * FROM VW_CUSTOMER_ORDER_HISTORY WHERE Customer_ID = :cid ORDER BY Order_Date DESC") }}
+    </section>
+  </div>
+
+  <div>
+    <section class="card">
+      <h2>Details</h2>
+      <dl class="facts">
+        <dt>Email</dt><dd>{{ c.email }}</dd>
+        <dt>Address</dt><dd>{{ c.street or '—' }}<br>{{ c.city }} {{ c.state }} {{ c.postal_code }}</dd>
+        <dt>Registered</dt><dd>{{ c.registration_date | d }}</dd>
+        <dt>Phones</dt><dd>{% for p in phones %}<span class="chip mono">{{ p.phone_number }}</span>{% endfor %}</dd>
+      </dl>
+      <form method="post" action="{{ url_for('add_phone', cid=c.customer_id) }}" class="inline-form">
+        <input name="phone" placeholder="Add another phone" required maxlength="15">
+        <button class="btn small ghost">Add</button>
+      </form>
+    </section>
+    <section class="card danger-zone">
+      <h2>Delete customer</h2>
+      <p class="hint">Allowed only if the customer has no orders (FK_ORDER_CUSTOMER). Phones are removed automatically (ON DELETE CASCADE).</p>
+      <form method="post" action="{{ url_for('delete_customer', cid=c.customer_id) }}"
+            onsubmit="return confirm('Delete this customer?')">
+        <button class="btn small danger">Delete customer</button>
+      </form>
+    </section>
+  </div>
+</div>
+{% endblock %}

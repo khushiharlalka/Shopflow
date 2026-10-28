@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Cannot reach Oracle{% endblock %}
+{% block eyebrow %}Connection problem{% endblock %}
+{% block heading %}ShopFlow could not talk to Oracle{% endblock %}
+{% block content %}
+<section class="card">
+  <p class="err">{{ message }}</p>
+  <p>Trying to connect as <b>{{ user }}</b> to <code>{{ dsn }}</code>.</p>
+  <ol class="checklist">
+    <li>Is the Oracle database running? (Windows: Services → OracleServiceXE and the TNS listener.)</li>
+    <li>Are the username, password and service name right in <code>config.py</code> (or the SHOPFLOW_DB_* variables)?</li>
+    <li>Was <code>12_complete_shopflow.sql</code> run in this same schema?</li>
+  </ol>
+</section>
+{% endblock %}

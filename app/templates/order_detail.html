@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pill, sql_box %}
+{% set st = o.order_status %}
+{% block title %}Order #{{ o.order_id }}{% endblock %}
+{% block eyebrow %}Order #{{ o.order_id }} · {{ o.order_date | d }}{% endblock %}
+{% block heading %}{{ o.customer_name }}{% endblock %}
+{% block actions %}
+  {% if next_status %}
+    <form method="post" action="{{ url_for('change_status', oid=o.order_id) }}">
+      <input type="hidden" name="status" value="{{ next_status }}">
+      <button class="btn">Mark as {{ next_status | title }} →</button>
+    </form>
+  {% endif %}
+  {% if st in ('PENDING', 'CONFIRMED') %}
+    <form method="post" action="{{ url_for('change_status', oid=o.order_id) }}" onsubmit="return confirm('Cancel this order? Stock will be restored.')">
+      <input type="hidden" name="status" value="CANCELLED">
+      <button class="btn danger ghost">Cancel order</button>
+    </form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="stepper {{ 'cancelled' if st == 'CANCELLED' }}">
+  {% set reached = flow.index(st) if st in flow else -1 %}
+  {% for s in flow %}
+    <div class="stp {{ 'done' if loop.index0 <= reached }} {{ 'now' if loop.index0 == reached }}">
+      <span class="ball">{{ loop.index }}</span><span>{{ s | title }}</span>
+    </div>
+  {% endfor %}
+  {% if st == 'CANCELLED' %}<div class="stp now cancel"><span class="ball">✕</span><span>Cancelled</span></div>{% endif %}
+</section>
+
+<div class="grid-side">
+  <div>
+    <section class="card">
+      <div class="card-head"><h2>Items</h2><span class="total">Total <b>{{ total | money }}</b> <small>FN_ORDER_TOTAL</small></span></div>
+      <table>
+        <thead><tr><th>Product</th><th class="num">Price paid</th><th class="num">Qty</th><th class="num">Subtotal</th><th></th></tr></thead>
+        <tbody>
+        {% for i in items %}
+          <tr>
+            <td><b>{{ i.product_name }}</b>
+              <small>#{{ i.product_id }}{% if i.current_price != i.unit_price %} · today's price {{ i.current_price | money }}{% endif %}</small></td>
+            <td class="num">{{ i.unit_price | money }}</td>
+            <td class="num">
+              {% if st == 'PENDING' %}
+                <form method="post" action="{{ url_for('change_qty', oid=o.order_id, pid=i.product_id) }}" class="qty-form">
+                  <input name="qty" type="number" min="1" value="{{ i.quantity }}"><button class="btn tiny ghost" title="UPDATE ORDER_ITEM">✓</button>
+                </form>
+              {% else %}{{ i.quantity }}{% endif %}
+            </td>
+            <td class="num">{{ i.item_subtotal | money }}</td>
+            <td class="right">
+              {% if st == 'PENDING' %}
+                <form method="post" action="{{ url_for('remove_item', oid=o.order_id, pid=i.product_id) }}">
+                  <button class="btn tiny danger ghost" title="DELETE FROM ORDER_ITEM">Remove</button>
+                </form>
+              {% elif i.return_id %}
+                {{ pill(i.return_status) }} <small>return #{{ i.return_id }} · qty {{ i.return_quantity }}</small>
+              {% elif st == 'DELIVERED' %}
+                <details class="return-box"><summary class="btn tiny ghost">Return…</summary>
+                  <form method="post" action="{{ url_for('request_return', oid=o.order_id, pid=i.product_id) }}" class="form">
+                    <label>Quantity<input name="qty" type="number" min="1" value="1"></label>
+                    <label>Reason<input name="reason" required maxlength="500" placeholder="What went wrong?"></label>
+                    <button class="btn small">Request return</button>
+                  </form>
+                </details>
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="empty">No items yet. An order needs at least one item before it can be confirmed.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+
+      {% if st == 'PENDING' %}
+      <form method="post" action="{{ url_for('add_item', oid=o.order_id) }}" class="add-item">
+        <select name="product" required>
+          <option value="">Add a product…</option>
+          {% for p in products %}<option value="{{ p.product_id }}">{{ p.product_name }} — {{ p.unit_price | money }} · {{ p.stock_quantity }} in stock</option>{% endfor %}
+        </select>
+        <input name="qty" type="number" min="1" value="1" aria-label="Quantity">
+        <button class="btn">Add item</button>
+      </form>
+      <p class="hint">Adding runs <code>PR_ADD_ORDER_ITEM</code>; the trigger <code>TRG_ORDER_ITEM_STOCK</code> copies today's price and reduces stock. Ask for more than the stock to see Oracle refuse it.</p>
+      {% endif %}
+      {{ sql_box("SELECT oi.*, p.Product_Name, p.Unit_Price AS current_price, r.Return_ID, r.Return_Status
+FROM ORDER_ITEM oi JOIN PRODUCT p ON p.Product_ID = oi.Product_ID
+     LEFT JOIN RETURN_REQUEST r ON r.Order_ID = oi.Order_ID AND r.Product_ID = oi.Product_ID
+WHERE oi.Order_ID = :oid") }}
+    </section>
+  </div>
+
+  <div>
+    <section class="card">
+      <h2>Shipping to</h2>
+      <p>{{ o.shipping_street }}<br>{{ o.shipping_city }}, {{ o.shipping_state }} {{ o.shipping_postal_code }}</p>
+      <p class="muted"><a href="{{ url_for('customer_detail', cid=o.customer_id) }}">{{ o.email }}</a></p>
+    </section>
+
+    <section class="card">
+      <h2>Payment</h2>
+      {% if payment %}
+        <dl class="facts">
+          <dt>Status</dt><dd>{{ pill(payment.payment_status) }}</dd>
+          <dt>Method</dt><dd>{{ payment.payment_method }}</dd>
+          <dt>Amount</dt><dd>{{ payment.payment_amount | money }}</dd>
+          <dt>Reference</dt><dd class="mono">{{ payment.transaction_reference or '— (COD)' }}</dd>
+          <dt>Date</dt><dd>{{ payment.payment_date | d }}</dd>
+        </dl>
+        <p class="hint">Only one payment per order (UQ_PAYMENT_ORDER).</p>
+      {% elif st == 'CANCELLED' %}
+        <p class="muted">Cancelled orders cannot be paid.</p>
+      {% else %}
+        <form method="post" action="{{ url_for('record_payment', oid=o.order_id) }}" class="form">
+          <div class="row2">
+            <label>Method<select name="method">{% for m in methods %}<option>{{ m }}</option>{% endfor %}</select></label>
+            <label>Status<select name="pay_status"><option>SUCCESS</option><option>PENDING</option><option>FAILED</option></select></label>
+          </div>
+          <label>Amount<input name="amount" type="number" step="0.01" value="{{ total }}" required></label>
+          <label>Transaction reference<input name="reference" maxlength="100" placeholder="Leave empty for COD"></label>
+          <button class="btn">Record payment</button>
+        </form>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

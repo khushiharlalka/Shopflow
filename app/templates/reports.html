@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block eyebrow %}{{ reports | length }} live SQL queries{% endblock %}
+{% block heading %}Reports{% endblock %}
+
+{% block content %}
+<div class="reports">
+  <nav class="report-list">
+    {% for r in reports %}
+      <a href="{{ url_for('reports', key=r.key) }}" class="{{ 'on' if r.key == rep.key }}">
+        <span class="qno">Q{{ loop.index }}</span><span>{{ r.title }}<small>{{ r.concept }}</small></span>
+      </a>
+    {% endfor %}
+  </nav>
+  <section class="card">
+    <p class="eyebrow">{{ rep.concept }}</p>
+    <h2>{{ rep.title }}</h2>
+    <p class="hint">{{ rep.explain }}</p>
+    <pre class="sql">{{ rep.sql }}</pre>
+    <p class="muted">{{ rows | length }} row{{ '' if rows | length == 1 else 's' }} returned by Oracle</p>
+    <div class="scroll">
+      <table>
+        <thead><tr>{% for c in cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+        <tbody>
+        {% for row in rows %}
+          <tr>{% for v in row %}<td class="{{ 'num' if v is number }}">{{ v.strftime('%d %b %Y') if v is not number and v is not string and v is not none else (v if v is not none else '—') }}</td>{% endfor %}</tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

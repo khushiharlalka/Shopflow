@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_macros.html" import sql_box %}
+{% block title %}Customers{% endblock %}
+{% block eyebrow %}CUSTOMER · CUSTOMER_PHONE{% endblock %}
+{% block heading %}Customers{% endblock %}
+
+{% block content %}
+<div class="grid-side">
+  <section class="card">
+    <table>
+      <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>City</th><th>Phones</th><th class="num">Orders</th><th>Since</th></tr></thead>
+      <tbody>
+      {% for c in rows %}
+        <tr class="link" onclick="location='{{ url_for('customer_detail', cid=c.customer_id) }}'">
+          <td class="muted">{{ c.customer_id }}</td>
+          <td><b>{{ c.first_name }} {{ c.last_name }}</b></td>
+          <td>{{ c.email }}</td><td>{{ c.city }}<small>{{ c.state }}</small></td>
+          <td class="mono">{{ c.phones or '—' }}</td>
+          <td class="num">{{ c.orders }}</td><td>{{ c.registration_date | d }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {{ sql_box("SELECT c.Customer_ID, c.First_Name, c.Last_Name, c.Email, c.City, c.State, c.Registration_Date,
+       (SELECT LISTAGG(p.Phone_Number, ', ') WITHIN GROUP (ORDER BY p.Phone_Number)
+        FROM CUSTOMER_PHONE p WHERE p.Customer_ID = c.Customer_ID) AS phones,
+       FN_CUSTOMER_ORDER_COUNT(c.Customer_ID) AS orders
+FROM   CUSTOMER c ORDER BY c.Customer_ID") }}
+  </section>
+
+  <section class="card form-card">
+    <h2>Register a customer</h2>
+    <p class="hint">Runs <code>PR_REGISTER_CUSTOMER</code>: the customer and the first phone are saved together, or not at all.</p>
+    <form method="post" action="{{ url_for('add_customer') }}" class="form">
+      <div class="row2">
+        <label>First name<input name="first" required maxlength="50"></label>
+        <label>Last name<input name="last" required maxlength="50"></label>
+      </div>
+      <label>Email<input name="email" type="email" required maxlength="100"></label>
+      <label>Phone<input name="phone" required maxlength="15" placeholder="10 digits"></label>
+      <label>Street<input name="street" maxlength="150"></label>
+      <div class="row2">
+        <label>City<input name="city" maxlength="50"></label>
+        <label>State<input name="state" maxlength="50"></label>
+      </div>
+      <label>Postal code<input name="postal" maxlength="10"></label>
+      <button class="btn">Register</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pill, sql_box %}
+{% block title %}Products{% endblock %}
+{% block eyebrow %}PRODUCT · CATEGORY{% endblock %}
+{% block heading %}Products &amp; stock{% endblock %}
+{% block actions %}
+  <form method="post" action="{{ url_for('auto_restock') }}">
+    <input type="hidden" name="next" value="products">
+    <input type="hidden" name="multiple" value="3">
+    <button class="btn ghost" title="Cursor procedure PR_AUTO_RESTOCK">↻ Auto-restock low items</button>
+  </form>
+{% endblock %}
+
+{% block content %}
+<nav class="tabs">
+  <a href="{{ url_for('products') }}" class="{{ 'on' if not cat }}">All</a>
+  {% for c in cats %}
+    <a href="{{ url_for('products', cat=c.category_id) }}" class="{{ 'on' if cat == c.category_id }}">{{ c.category_name }} <small>{{ c.n }}</small></a>
+  {% endfor %}
+</nav>
+
+<details class="card add-card">
+  <summary><b>+ Add a product</b> <span class="muted">— INSERT into PRODUCT</span></summary>
+    <form method="post" action="{{ url_for('add_product') }}" class="form add-grid">
+      <label>Category
+        <select name="category" required>
+          {% for c in cats %}<option value="{{ c.category_id }}" {{ 'selected' if cat == c.category_id }}>{{ c.category_name }}</option>{% endfor %}
+        </select></label>
+      <label>Product name<input name="name" required maxlength="100"></label>
+      <label>Description<input name="description" maxlength="500"></label>
+      <div class="row3">
+        <label>Price<input name="price" type="number" step="0.01" required></label>
+        <label>Stock<input name="stock" type="number" value="0" required></label>
+        <label>Reorder at<input name="reorder" type="number" value="5" required></label>
+      </div>
+      <button class="btn">Add product</button>
+      <p class="hint">Try a negative price: Oracle's <code>CK_PRODUCT_PRICE</code> rejects it and nothing is saved.</p>
+    </form>
+</details>
+
+<div>
+  <section class="card">
+    <table>
+      <thead><tr><th>ID</th><th>Product</th><th class="num">Price</th><th class="num">Stock</th><th>Stock status</th><th>Edit price · stock · status</th></tr></thead>
+      <tbody>
+      {% for p in rows %}
+        <tr>
+          <td class="muted">{{ p.product_id }}</td>
+          <td><b>{{ p.product_name }}</b><small>{{ p.category_name }} · reorder at {{ p.reorder_level }}</small></td>
+          <td class="num">{{ p.unit_price | money }}</td>
+          <td class="num">{{ p.stock_quantity }}</td>
+          <td>{{ pill(p.stock_status) }}{% if p.product_status != 'ACTIVE' %} {{ pill(p.product_status) }}{% endif %}</td>
+          <td>
+            <form method="post" action="{{ url_for('update_product', pid=p.product_id) }}" class="edit-row">
+              <input type="hidden" name="cat" value="{{ cat or '' }}">
+              <input name="price" value="{{ p.unit_price }}" size="6" aria-label="Price">
+              <input name="stock" value="{{ p.stock_quantity }}" size="3" aria-label="Stock">
+              <select name="status" aria-label="Status">
+                {% for s in ['ACTIVE', 'INACTIVE', 'DISCONTINUED'] %}<option {{ 'selected' if s == p.product_status }}>{{ s }}</option>{% endfor %}
+              </select>
+              <button class="btn small ghost">Save</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {{ sql_box("SELECT v.*, p.Category_ID FROM VW_PRODUCT_STOCK_STATUS v JOIN PRODUCT p ON p.Product_ID = v.Product_ID
+ORDER BY v.Product_ID     -- Stock_Status is a virtual column in PRODUCT") }}
+  </section>
+
+</div>
+{% endblock %}

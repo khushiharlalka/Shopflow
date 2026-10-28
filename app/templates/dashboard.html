@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pill, sql_box %}
+{% block title %}Dashboard{% endblock %}
+{% block eyebrow %}Overview{% endblock %}
+{% block heading %}Good to see you. Here's the shop today.{% endblock %}
+{% block actions %}
+  <a class="btn" href="{{ url_for('orders') }}">+ New order</a>
+{% endblock %}
+
+{% block content %}
+<section class="kpis">
+  <div class="kpi"><span>Customers</span><b>{{ kpi.customers }}</b></div>
+  <div class="kpi"><span>Orders</span><b>{{ kpi.orders }}</b></div>
+  <div class="kpi accent"><span>Sales (excl. cancelled)</span><b>{{ kpi.sales | money }}</b></div>
+  <div class="kpi warn"><span>Low / out of stock</span><b>{{ kpi.low_stock }}</b></div>
+  <div class="kpi"><span>Open returns</span><b>{{ kpi.open_returns }}</b></div>
+</section>
+
+<div class="grid-2">
+  <section class="card">
+    <h2>Sales by month</h2>
+    <div class="bars">
+      {% for m in monthly %}
+        <div class="bar-row">
+          <span class="bar-label">{{ m.month }}</span>
+          <span class="bar"><span style="width: {{ (100 * m.sales / top) | round(1) }}%"></span></span>
+          <span class="bar-val">{{ m.sales | money }}</span>
+        </div>
+      {% endfor %}
+    </div>
+    <div class="pipeline">
+      {% for s in ['PENDING', 'CONFIRMED', 'SHIPPED', 'DELIVERED', 'CANCELLED'] %}
+        <a href="{{ url_for('orders', status=s) }}">{{ pill(s) }}<b>{{ by_status.get(s, 0) }}</b></a>
+      {% endfor %}
+    </div>
+    {{ sql_box("SELECT TO_CHAR(co.Order_Date, 'YYYY-MM') AS month, SUM(oi.Item_Subtotal) AS sales
+FROM   CUSTOMER_ORDER co JOIN ORDER_ITEM oi ON oi.Order_ID = co.Order_ID
+WHERE  co.Order_Status <> 'CANCELLED'
+GROUP  BY TO_CHAR(co.Order_Date, 'YYYY-MM') ORDER BY month") }}
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>Needs restocking</h2>
+      <form method="post" action="{{ url_for('auto_restock') }}">
+        <input type="hidden" name="multiple" value="3">
+        <button class="btn small" title="Runs the cursor procedure PR_AUTO_RESTOCK">Auto-restock all</button>
+      </form>
+    </div>
+    <table>
+      <thead><tr><th>Product</th><th class="num">Stock</th><th class="num">Reorder at</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for p in low %}
+        <tr><td>{{ p.product_name }}<small>{{ p.category_name }} · {{ p.product_status | lower }}</small></td>
+            <td class="num">{{ p.stock_quantity }}</td><td class="num">{{ p.reorder_level }}</td>
+            <td>{{ pill(p.stock_status) }}</td></tr>
+      {% else %}
+        <tr><td colspan="4" class="empty">Everything is well stocked.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {{ sql_box("SELECT * FROM VW_LOW_STOCK_PRODUCTS ORDER BY Stock_Quantity, Product_ID") }}
+  </section>
+</div>
+
+<section class="card">
+  <div class="card-head"><h2>Latest orders</h2><a href="{{ url_for('orders') }}">All orders →</a></div>
+  <table>
+    <thead><tr><th>Order</th><th>Customer</th><th>Date</th><th>Status</th><th class="num">Items</th><th class="num">Value</th><th>Payment</th></tr></thead>
+    <tbody>
+    {% for o in recent %}
+      <tr class="link" onclick="location='{{ url_for('order_detail', oid=o.order_id) }}'">
+        <td><b>#{{ o.order_id }}</b></td><td>{{ o.customer_name }}</td><td>{{ o.order_date | d }}</td>
+        <td>{{ pill(o.order_status) }}</td><td class="num">{{ o.total_quantity }}</td>
+        <td class="num">{{ o.total_order_value | money }}</td>
+        <td>{{ pill(o.payment_status) }} <small>{{ o.payment_method }}</small></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {{ sql_box("SELECT * FROM VW_ORDER_SUMMARY ORDER BY Order_Date DESC, Order_ID DESC FETCH FIRST 6 ROWS ONLY") }}
+</section>
+{% endblock %}

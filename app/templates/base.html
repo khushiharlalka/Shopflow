@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ShopFlow{% endblock %} · ShopFlow</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% from "_macros.html" import trace_panel %}
+<aside class="side">
+  <a class="brand" href="{{ url_for('dashboard') }}">
+    <svg viewBox="0 0 40 40" class="logo" aria-hidden="true">
+      <path d="M6 12c8 0 8 8 16 8s8-8 12-8" />
+      <path d="M6 20c8 0 8 8 16 8s8-8 12-8" />
+      <path d="M6 28c8 0 8 8 16 8s8-8 12-8" />
+    </svg>
+    <span>Shop<b>Flow</b></span>
+  </a>
+  <nav>
+    {% set ep = request.endpoint %}
+    <a href="{{ url_for('dashboard') }}" class="{{ 'on' if ep == 'dashboard' }}"><i>◎</i>Dashboard</a>
+    <a href="{{ url_for('customers') }}" class="{{ 'on' if ep in ('customers', 'customer_detail') }}"><i>☺</i>Customers</a>
+    <a href="{{ url_for('products') }}" class="{{ 'on' if ep == 'products' }}"><i>▦</i>Products</a>
+    <a href="{{ url_for('orders') }}" class="{{ 'on' if ep in ('orders', 'order_detail') }}"><i>≡</i>Orders</a>
+    <a href="{{ url_for('returns') }}" class="{{ 'on' if ep == 'returns' }}"><i>↺</i>Returns</a>
+    <a href="{{ url_for('reports') }}" class="{{ 'on' if ep == 'reports' }}"><i>▤</i>Reports</a>
+    <a href="{{ url_for('sql_log') }}" class="{{ 'on' if ep == 'sql_log' }}"><i>⌁</i>SQL Log</a>
+  </nav>
+  <div class="side-foot">
+    <span class="dot"></span> Oracle · python-oracledb
+    <small>DBMS Project · Khushi Harlalka · 25BDE0151</small>
+  </div>
+</aside>
+
+<main>
+  <header class="top">
+    <div>
+      <p class="eyebrow">{% block eyebrow %}{% endblock %}</p>
+      <h1>{% block heading %}{% endblock %}</h1>
+    </div>
+    <div class="top-actions">{% block actions %}{% endblock %}</div>
+  </header>
+
+  {% if trace %}{{ trace_panel(trace) }}{% endif %}
+
+  {% block content %}{% endblock %}
+</main>
+</body>
+</html>

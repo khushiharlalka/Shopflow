@@ -1,0 +1,43 @@
+SHOPFLOW - E-COMMERCE ORDER, INVENTORY AND RETURNS MANAGEMENT SYSTEM
+Khushi Harlalka | 25BDE0151 | Database Systems
+
+WHAT IS IN THIS FOLDER
+  sql/        All 17 database scripts (the backend)
+  app/        The Python website (front end)
+  report/     Project report (Word) + the diagrams as PNG images
+  run.bat     Start the website on Windows
+  run.sh      Start the website on Mac / Linux
+  requirements.txt            Python add-ons (installed automatically)
+  README.md                   Short instructions + troubleshooting
+  PROJECT_FILES_EXPLAINED.md  What every file does (give to ChatGPT)
+  ALL_CODE_FOR_CHATGPT.txt    Every file's code in one file
+
+QUICK START ON A NEW DEVICE
+  You need: Oracle Database (21c XE on Windows, or 23ai Free in Docker on Mac),
+            SQL Developer (or SQL*Plus), and Python 3.9+.
+
+  1. As the ADMIN user (SYSTEM), run  sql/01_user_setup.sql
+     -> creates user  shopflow / ShopFlow_2026
+  2. As SHOPFLOW, run  sql/12_complete_shopflow.sql  (F5 in SQL Developer)
+     -> builds all tables, triggers, procedures, views and sample data
+     -> check:  SELECT * FROM USER_ERRORS;   must return no rows
+  3. (For tests / report screenshots) run  sql/10_test_queries.sql  and
+     sql/11_transaction_demo.sql, then run file 12 again to reset the data.
+  4. (For the report's extra sections) run 13 (as ADMIN), 14 (as SHOPFLOW),
+     15 (as shopflow_viewer / Viewer_2026), 16 (as SHOPFLOW), and follow 17
+     line by line in two windows.
+  5. Start the website:
+       Windows : right-click run.bat -> Edit, check the 3 settings, save,
+                 then double-click run.bat
+       Mac     : open Terminal in this folder, then
+                 chmod +x run.sh
+                 ./run.sh
+     Then open  http://127.0.0.1:5000
+
+  Service name: XEPDB1 for Oracle 21c XE (Windows), FREEPDB1 for 23ai Free / Docker (Mac).
+  run.bat uses XEPDB1, run.sh uses FREEPDB1 - change it if yours is different.
+
+  Mac Docker one-time setup (after installing Docker Desktop):
+    docker run -d --name shopflow-oracle -p 1521:1521 -e ORACLE_PASSWORD=Oracle2026 -v shopflow-data:/opt/oracle/oradata gvenzl/oracle-free
+    docker logs -f shopflow-oracle      (wait for DATABASE IS READY TO USE!, then Ctrl+C)
+    Next time: open Docker, then  docker start shopflow-oracle

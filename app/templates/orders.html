@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pill, sql_box %}
+{% block title %}Orders{% endblock %}
+{% block eyebrow %}CUSTOMER_ORDER · ORDER_ITEM · PAYMENT{% endblock %}
+{% block heading %}Orders{% endblock %}
+
+{% block content %}
+<section class="card start-order">
+  <div>
+    <h2>Start a new order</h2>
+    <p class="hint">Calls <code>PR_CREATE_ORDER</code>. The order starts as PENDING; you add items on the next screen.</p>
+  </div>
+  <form method="post" action="{{ url_for('create_order') }}" class="inline-form">
+    <select name="customer" required>
+      <option value="">Choose a customer…</option>
+      {% for c in custs %}<option value="{{ c.customer_id }}">{{ c.name }} · {{ c.city }}</option>{% endfor %}
+    </select>
+    <button class="btn">Create order</button>
+  </form>
+</section>
+
+<nav class="tabs">
+  <a href="{{ url_for('orders') }}" class="{{ 'on' if not status }}">All</a>
+  {% for s in statuses %}<a href="{{ url_for('orders', status=s) }}" class="{{ 'on' if status == s }}">{{ s | title }}</a>{% endfor %}
+</nav>
+
+<section class="card">
+  <table>
+    <thead><tr><th>Order</th><th>Customer</th><th>Date</th><th>Status</th><th class="num">Items</th><th class="num">Value</th><th>Payment</th></tr></thead>
+    <tbody>
+    {% for o in rows %}
+      <tr class="link" onclick="location='{{ url_for('order_detail', oid=o.order_id) }}'">
+        <td><b>#{{ o.order_id }}</b></td><td>{{ o.customer_name }}</td><td>{{ o.order_date | d }}</td>
+        <td>{{ pill(o.order_status) }}</td><td class="num">{{ o.total_quantity }}</td>
+        <td class="num">{{ o.total_order_value | money }}</td>
+        <td>{{ pill(o.payment_status) }} <small>{{ o.payment_method }}</small></td></tr>
+    {% else %}
+      <tr><td colspan="7" class="empty">No orders with this status.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {{ sql_box("SELECT * FROM VW_ORDER_SUMMARY ORDER BY Order_ID DESC") }}
+</section>
+{% endblock %}

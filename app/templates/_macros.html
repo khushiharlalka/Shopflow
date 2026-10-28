@@ -1,0 +1,35 @@
+{# Small reusable pieces used by every page #}
+
+{% macro pill(value) -%}
+  <span class="pill pill-{{ (value or 'none') | lower | replace(' ', '-') | replace('_', '-') }}">{{ value or '—' }}</span>
+{%- endmacro %}
+
+{% macro sql_box(sql, label="SQL behind this table") -%}
+  <details class="sqlbox"><summary>{{ label }}</summary><pre>{{ sql | trim }}</pre></details>
+{%- endmacro %}
+
+{# The four-step flow from the project guide:
+   User operation -> SQL/PL/SQL -> Database processing -> Result #}
+{% macro trace_panel(t, compact=False) -%}
+<section class="trace {{ 'ok' if t.ok else 'bad' }} {{ 'compact' if compact }}">
+  <div class="trace-head">
+    <span class="trace-badge">{{ '✓ Committed' if t.ok else '✕ Rolled back' }}</span>
+    <strong>Behind the scenes</strong>
+    <span class="muted">· {{ t.time }}</span>
+  </div>
+  <ol class="flow">
+    <li><span class="step">1 · User operation</span><p>{{ t.operation }}</p></li>
+    <li><span class="step">2 · SQL / PL/SQL</span><p>{{ t.component }}</p><pre>{{ t.sql }}</pre></li>
+    <li><span class="step">3 · Database processing</span><p>Tables: {{ t.tables }}</p>
+      {% for e in t.effect %}<p class="effect">{{ e }}</p>{% endfor %}</li>
+    <li><span class="step">4 · Result</span>
+      {% if t.ok %}
+        {% for line in t.output %}<p class="out">{{ line }}</p>{% else %}<p>Done.</p>{% endfor %}
+      {% else %}
+        <p class="err">{{ t.error }}</p>
+        <p class="muted">Oracle rejected the change, so the whole transaction was rolled back.</p>
+      {% endif %}
+    </li>
+  </ol>
+</section>
+{%- endmacro %}

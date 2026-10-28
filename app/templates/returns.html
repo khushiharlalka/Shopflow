@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pill, sql_box %}
+{% block title %}Returns{% endblock %}
+{% block eyebrow %}RETURN_REQUEST{% endblock %}
+{% block heading %}Returns &amp; refunds{% endblock %}
+
+{% block content %}
+<section class="card refund-banner">
+  <div>
+    <h2>{{ approved.n }} approved return{{ '' if approved.n == 1 else 's' }} waiting for refund</h2>
+    <p class="hint">Pays them all at once with the cursor procedure <code>PR_PROCESS_APPROVED_REFUNDS</code>
+      (refund = returned quantity × price paid).</p>
+  </div>
+  <form method="post" action="{{ url_for('process_refunds') }}">
+    <button class="btn" {{ 'disabled' if not approved.n }}>Refund {{ approved.amount | money }}</button>
+  </form>
+</section>
+
+<nav class="tabs">
+  <a href="{{ url_for('returns') }}" class="{{ 'on' if not status }}">All</a>
+  {% for s in statuses %}<a href="{{ url_for('returns', status=s) }}" class="{{ 'on' if status == s }}">{{ s | replace('_', ' ') | title }}</a>{% endfor %}
+</nav>
+
+<section class="card">
+  <table>
+    <thead><tr><th>Return</th><th>Customer</th><th>Product</th><th class="num">Qty</th><th>Reason</th><th>Status</th><th class="num">Refund</th><th>Update</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td><b>#{{ r.return_id }}</b><small>{{ r.return_date | d }}</small></td>
+        <td>{{ r.customer_name }}<small><a href="{{ url_for('order_detail', oid=r.order_id) }}">order #{{ r.order_id }}</a></small></td>
+        <td>{{ r.product_name }}</td>
+        <td class="num">{{ r.return_quantity }} / {{ r.ordered_quantity }}</td>
+        <td class="reason">{{ r.return_reason }}</td>
+        <td>{{ pill(r.return_status) }}</td>
+        <td class="num">{{ r.refund_amount | money }}</td>
+        <td>
+          {% if r.return_status not in ('REFUNDED', 'REJECTED', 'COMPLETED') %}
+          <form method="post" action="{{ url_for('return_status', rid=r.return_id) }}" class="edit-row">
+            <select name="status">
+              {% for s in statuses if s != 'REFUNDED' %}<option {{ 'selected' if s == r.return_status }}>{{ s }}</option>{% endfor %}
+            </select>
+            <button class="btn small ghost">Save</button>
+          </form>
+          {% else %}<span class="muted">closed</span>{% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="empty">No returns with this status.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {{ sql_box("SELECT * FROM VW_RETURN_DETAILS ORDER BY Return_ID DESC") }}
+</section>
+{% endblock %}
